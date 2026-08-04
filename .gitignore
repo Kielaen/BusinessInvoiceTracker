@@ -1,0 +1,29 @@
+# Repository-local tools and transient spike output
+.tools/
+**/bin/
+**/obj/
+**/node_modules/
+**/coverage/
+**/TestResults/
+**/.vite/
+**/dist/
+**/*.tsbuildinfo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+
+# Runtime state and diagnostics
+artifacts/
+spikes/**/artifacts/
+spikes/**/data/
+*.log
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

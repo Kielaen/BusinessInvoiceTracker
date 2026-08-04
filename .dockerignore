@@ -1,0 +1,15 @@
+.git
+.tools
+artifacts
+spikes
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/coverage
+**/TestResults
+**/*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example

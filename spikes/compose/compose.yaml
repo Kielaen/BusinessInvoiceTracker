@@ -1,0 +1,132 @@
+name: business-invoice-phase0
+
+services:
+  postgres:
+    image: postgres:17.10-alpine3.23@sha256:8189a1f6e40904781fc9e2612687877791d21679866db58b1de996b31fc312e4
+    environment:
+      POSTGRES_DB: invoice_phase0
+      POSTGRES_USER: invoice_phase0
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-phase0-local-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoice_phase0 -d invoice_phase0"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.4.10-alpine3.21@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - redis-data:/data
+
+  mailpit:
+    image: axllent/mailpit:v1.30.6@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
+    ports:
+      - "8025:8025"
+
+  placement:
+    image: daprio/placement:1.17.7@sha256:3c95f8077aa4228090e560060cc187e4cf9a532da806a488f47d267156fb2ddd
+    command: ["./placement", "--port", "50006"]
+
+  scheduler:
+    image: daprio/scheduler:1.17.7@sha256:9a97da9a5b7c5d850f051f38a87424e50d1f54157f8136ad9da87c2fe4d4d2b5
+    command: ["./scheduler", "--port", "50007", "--etcd-data-dir", "/data"]
+    # The official self-hosted Compose topology uses root for the writable
+    # scheduler data volume. Application containers remain non-root.
+    user: root
+    volumes:
+      - scheduler-data:/data
+
+  workflow-api:
+    build:
+      context: ../dapr-workflow/WorkflowSpike.Api
+    environment:
+      DAPR_GRPC_ENDPOINT: http://127.0.0.1:50001
+      DAPR_HTTP_ENDPOINT: http://127.0.0.1:3500
+    ports:
+      - "5190:8080"
+      - "3520:3500"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      placement:
+        condition: service_started
+      scheduler:
+        condition: service_started
+
+  workflow-dapr:
+    image: daprio/daprd:1.17.7@sha256:d8a6c8fe0ee893eab6d74b7d685a31d5ba6e50eae0edc1c59163a0decafb2055
+    command:
+      - ./daprd
+      - --app-id
+      - workflow-spike
+      - --app-port
+      - "8080"
+      - --dapr-http-port
+      - "3500"
+      - --dapr-grpc-port
+      - "50001"
+      - --placement-host-address
+      - placement:50006
+      - --scheduler-host-address
+      - scheduler:50007
+      - --resources-path
+      - /components
+      - --log-as-json
+    volumes:
+      - ../dapr-workflow/components:/components:ro
+    network_mode: "service:workflow-api"
+    depends_on:
+      workflow-api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      placement:
+        condition: service_started
+      scheduler:
+        condition: service_started
+
+  auth-api:
+    build:
+      context: ../auth-contract/AuthContract.Api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DataProtection__KeysPath: /keys
+    volumes:
+      - data-protection-keys:/keys
+
+  web:
+    build:
+      context: ../auth-contract/web
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-api:
+        condition: service_started
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.4.2@sha256:d71f709233fdd53092a9a562ca6fb74264aec7c16c9aff03da94091f18ea2394
+    profiles: ["observability"]
+    environment:
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+      - "4318:18890"
+
+volumes:
+  data-protection-keys:
+  postgres-data:
+  redis-data:
+  scheduler-data:

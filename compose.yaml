@@ -1,0 +1,256 @@
+name: business-invoice-tracker
+
+services:
+  postgres:
+    image: postgres:17.10-alpine3.23@sha256:8189a1f6e40904781fc9e2612687877791d21679866db58b1de996b31fc312e4
+    environment:
+      POSTGRES_DB: invoice
+      POSTGRES_USER: invoice
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD or use --env-file .env.example}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoice -d invoice"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.4.10-alpine3.21@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - redis-data:/data
+
+  mailpit:
+    image: axllent/mailpit:v1.30.6@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
+    environment:
+      MP_IGNORE_DUPLICATE_IDS: "true"
+      MP_MAX_MESSAGES: "500"
+      MP_ENABLE_CHAOS: "true"
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  placement:
+    image: daprio/placement:1.17.7@sha256:3c95f8077aa4228090e560060cc187e4cf9a532da806a488f47d267156fb2ddd
+    command: ["./placement", "--port", "50006"]
+
+  scheduler:
+    image: daprio/scheduler:1.17.7@sha256:9a97da9a5b7c5d850f051f38a87424e50d1f54157f8136ad9da87c2fe4d4d2b5
+    command: ["./scheduler", "--port", "50007", "--etcd-data-dir", "/data"]
+    user: root
+    volumes:
+      - scheduler-data:/data
+
+  migrate:
+    build:
+      context: .
+      target: api
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InvoiceDatabase: Host=postgres;Database=invoice;Username=invoice;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD or use --env-file .env.example};GSS Encryption Mode=Disable
+      DemoSeed__Enabled: "true"
+      DemoSeed__Password: ${DEMO_USER_PASSWORD:?Set DEMO_USER_PASSWORD or use --env-file .env.example}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InvoiceDatabase: Host=postgres;Database=invoice;Username=invoice;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD or use --env-file .env.example};GSS Encryption Mode=Disable
+      DataProtection__KeysPath: /keys
+      Dapr__HttpEndpoint: http://127.0.0.1:3500
+    volumes:
+      - data-protection-keys:/keys
+    healthcheck:
+      test: ["CMD", "dotnet", "Invoice.Api.dll", "--healthcheck"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api-replica:
+    profiles: ["replica-test"]
+    build:
+      context: .
+      target: api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InvoiceDatabase: Host=postgres;Database=invoice;Username=invoice;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD or use --env-file .env.example};GSS Encryption Mode=Disable
+      DataProtection__KeysPath: /keys
+      Dapr__HttpEndpoint: http://127.0.0.1:3500
+    volumes:
+      - data-protection-keys:/keys
+    ports:
+      - "5081:8080"
+    healthcheck:
+      test: ["CMD", "dotnet", "Invoice.Api.dll", "--healthcheck"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api-replica-dapr:
+    profiles: ["replica-test"]
+    image: daprio/daprd:1.17.7@sha256:d8a6c8fe0ee893eab6d74b7d685a31d5ba6e50eae0edc1c59163a0decafb2055
+    command:
+      - ./daprd
+      - --app-id
+      - invoice-api-replica
+      - --app-port
+      - "8080"
+      - --dapr-http-port
+      - "3500"
+      - --dapr-grpc-port
+      - "50001"
+      - --resources-path
+      - /components
+      - --log-as-json
+    volumes:
+      - ./deploy/dapr/components:/components:ro
+    network_mode: "service:api-replica"
+    depends_on:
+      api-replica:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  api-dapr:
+    image: daprio/daprd:1.17.7@sha256:d8a6c8fe0ee893eab6d74b7d685a31d5ba6e50eae0edc1c59163a0decafb2055
+    command:
+      - ./daprd
+      - --app-id
+      - invoice-api
+      - --app-port
+      - "8080"
+      - --dapr-http-port
+      - "3500"
+      - --dapr-grpc-port
+      - "50001"
+      - --resources-path
+      - /components
+      - --log-as-json
+    volumes:
+      - ./deploy/dapr/components:/components:ro
+    network_mode: "service:api"
+    depends_on:
+      api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  automation:
+    build:
+      context: .
+      target: automation
+    environment:
+      ConnectionStrings__InvoiceDatabase: Host=postgres;Database=invoice;Username=invoice;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD or use --env-file .env.example};GSS Encryption Mode=Disable
+      Dapr__HttpEndpoint: http://127.0.0.1:3500
+      DAPR_GRPC_ENDPOINT: http://127.0.0.1:50001
+      DAPR_HTTP_ENDPOINT: http://127.0.0.1:3500
+      Dapr__PlacementEndpoint: placement:50006
+      Dapr__SchedulerEndpoint: scheduler:50007
+      Mailpit__BaseUri: http://mailpit:8025
+      Mailpit__SmtpHost: mailpit
+      Mailpit__SmtpPort: "1025"
+    ports:
+      - "127.0.0.1:5191:8080"
+      - "127.0.0.1:5192:3500"
+    healthcheck:
+      test: ["CMD", "dotnet", "Invoice.Automation.dll", "--healthcheck"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+
+  automation-dapr:
+    image: daprio/daprd:1.17.7@sha256:d8a6c8fe0ee893eab6d74b7d685a31d5ba6e50eae0edc1c59163a0decafb2055
+    command:
+      - ./daprd
+      - --app-id
+      - invoice-automation
+      - --app-port
+      - "8080"
+      - --dapr-http-port
+      - "3500"
+      - --dapr-grpc-port
+      - "50001"
+      - --resources-path
+      - /components
+      - --placement-host-address
+      - placement:50006
+      - --scheduler-host-address
+      - scheduler:50007
+      - --log-as-json
+    environment:
+      INVOICE_WORKFLOW_STATE_CONNECTION: host=postgres user=invoice password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD or use --env-file .env.example} port=5432 connect_timeout=10 database=invoice
+    volumes:
+      - ./deploy/dapr/components:/components:ro
+    network_mode: "service:automation"
+    depends_on:
+      automation:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      placement:
+        condition: service_started
+      scheduler:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      target: web
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.4.2@sha256:d71f709233fdd53092a9a562ca6fb74264aec7c16c9aff03da94091f18ea2394
+    profiles: ["observability"]
+    environment:
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+      - "4318:18890"
+
+volumes:
+  data-protection-keys:
+  postgres-data:
+  redis-data:
+  scheduler-data:

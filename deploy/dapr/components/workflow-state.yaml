@@ -1,0 +1,24 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: workflowstatestore
+spec:
+  type: state.postgresql
+  version: v2
+  metadata:
+    - name: connectionString
+      secretKeyRef:
+        name: WORKFLOW_STATE_CONNECTION
+        key: WORKFLOW_STATE_CONNECTION
+    - name: tablePrefix
+      value: "workflow_"
+    - name: metadataTableName
+      value: "workflow_dapr_metadata"
+    - name: cleanupInterval
+      value: "-1"
+    - name: actorStateStore
+      value: "true"
+auth:
+  secretStore: environment-secrets
+scopes:
+  - invoice-automation

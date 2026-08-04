@@ -1,0 +1,27 @@
+{
+  "name": "phase0-auth-contract-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vue-tsc -b && vite build",
+    "generate": "openapi-ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vue": "3.5.40",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "@types/node": "26.1.2",
+    "@vitejs/plugin-vue": "6.0.8",
+    "typescript": "6.0.3",
+    "vite": "8.2.0",
+    "vitest": "4.1.10",
+    "vue-tsc": "3.3.8"
+  },
+  "overrides": {
+    "js-yaml": "4.3.0"
+  }
+}

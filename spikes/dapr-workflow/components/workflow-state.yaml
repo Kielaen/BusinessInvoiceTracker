@@ -1,0 +1,18 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: workflowstatestore
+spec:
+  type: state.postgresql
+  version: v2
+  metadata:
+    - name: connectionString
+      value: "host=postgres user=invoice_phase0 password=phase0-local-only port=5432 connect_timeout=10 database=invoice_phase0"
+    - name: tablePrefix
+      value: "workflow_"
+    - name: metadataTableName
+      value: "workflow_dapr_metadata"
+    - name: cleanupInterval
+      value: "-1"
+    - name: actorStateStore
+      value: "true"

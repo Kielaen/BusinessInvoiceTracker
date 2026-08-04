@@ -1,0 +1,16 @@
+apiVersion: dapr.io/v1alpha1
+kind: Resiliency
+metadata:
+  name: lifecycle-resiliency
+spec:
+  policies:
+    retries:
+      lifecycleTransportRetry:
+        policy: constant
+        duration: 2s
+        maxRetries: 4
+  targets:
+    components:
+      pubsub:
+        inbound:
+          retry: lifecycleTransportRetry

@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Scan committed history for secrets
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --no-banner --redact --exit-code 1
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: src/**/packages.lock.json
+
+      - name: Restore and build backend
+        run: |
+          dotnet restore BusinessInvoiceTracker.slnx --locked-mode
+          dotnet build BusinessInvoiceTracker.slnx --configuration Release --no-restore
+          dotnet format BusinessInvoiceTracker.slnx --verify-no-changes --no-restore --verbosity minimal
+          dotnet tool restore
+          mkdir -p artifacts
+          ConnectionStrings__InvoiceDatabase='Host=127.0.0.1;Database=design;Username=design;Password=design' \
+            dotnet ef migrations has-pending-model-changes \
+              --project src/Invoice.Infrastructure/Invoice.Infrastructure.csproj \
+              --startup-project src/Invoice.Api/Invoice.Api.csproj \
+              --configuration Release --no-build
+          ConnectionStrings__InvoiceDatabase='Host=127.0.0.1;Database=design;Username=design;Password=design' \
+            dotnet ef migrations script --idempotent \
+              --project src/Invoice.Infrastructure/Invoice.Infrastructure.csproj \
+              --startup-project src/Invoice.Api/Invoice.Api.csproj \
+              --configuration Release --no-build \
+              --output artifacts/migrations.sql
+          dotnet test BusinessInvoiceTracker.slnx --configuration Release --no-build \
+            --collect:'Code Coverage' --results-directory artifacts/TestResults
+          dotnet list BusinessInvoiceTracker.slnx package --vulnerable --include-transitive
+
+      - name: Preserve reviewed migration artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: migration-sql
+          path: artifacts/migrations.sql
+          if-no-files-found: error
+
+      - name: Preserve backend coverage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: backend-coverage
+          path: artifacts/TestResults/**/*.coverage
+          if-no-files-found: error
+
+      - name: Install pinned Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24.14.1
+          cache: npm
+          cache-dependency-path: web/invoice-web/package-lock.json
+
+      - name: Generate, test, and build frontend
+        working-directory: web/invoice-web
+        run: |
+          npm ci
+          npm run generate
+          git diff --exit-code -- src/generated
+          npm run test:coverage
+          npm run build
+          npm run check:bundle
+          npm audit --audit-level=high
+
+      - name: Preserve frontend coverage report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: frontend-coverage
+          path: web/invoice-web/coverage
+          if-no-files-found: error
+
+      - name: Configure Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Build API image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          target: api
+          tags: business-invoice-ci-api:${{ github.sha }}
+          load: true
+          push: false
+
+      - name: Build automation image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          target: automation
+          tags: business-invoice-ci-automation:${{ github.sha }}
+          load: true
+          push: false
+
+      - name: Build web image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          target: web
+          tags: business-invoice-ci-web:${{ github.sha }}
+          load: true
+          push: false
+
+      - name: Scan API image and generate SBOM
+        uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
+        with:
+          command: cves,sbom
+          image: local://business-invoice-ci-api:${{ github.sha }}
+          only-severities: critical,high
+          exit-code: true
+          format: spdx
+          output: artifacts/api.spdx.json
+
+      - name: Scan automation image and generate SBOM
+        uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
+        with:
+          command: cves,sbom
+          image: local://business-invoice-ci-automation:${{ github.sha }}
+          only-severities: critical,high
+          exit-code: true
+          format: spdx
+          output: artifacts/automation.spdx.json
+
+      - name: Scan web image and generate SBOM
+        uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
+        with:
+          command: cves,sbom
+          image: local://business-invoice-ci-web:${{ github.sha }}
+          only-severities: critical,high
+          exit-code: true
+          format: spdx
+          output: artifacts/web.spdx.json
+
+      - name: Preserve final-image SBOMs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: final-image-sboms
+          path: artifacts/*.spdx.json
+          if-no-files-found: error
+
+      - name: Start and verify Docker reviewer path
+        shell: pwsh
+        run: ./scripts/verify-compose.ps1 -Build -Cleanup

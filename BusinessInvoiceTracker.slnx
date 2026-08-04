@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Invoice.Api/Invoice.Api.csproj" />
+    <Project Path="src/Invoice.Application/Invoice.Application.csproj" />
+    <Project Path="src/Invoice.Automation/Invoice.Automation.csproj" />
+    <Project Path="src/Invoice.Domain/Invoice.Domain.csproj" />
+    <Project Path="src/Invoice.Infrastructure/Invoice.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Invoice.Tests/Invoice.Tests.csproj" />
+  </Folder>
+</Solution>
