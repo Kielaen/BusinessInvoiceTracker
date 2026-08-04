@@ -5,7 +5,7 @@ Status values are `Unstarted`, `In progress`, `Proven`, or `Blocked`. A row beco
 
 | ID | Source requirement | Planned implementation phase | Required evidence | Status |
 |---|---|---:|---|---|
-| REQ-001 | Public full-stack Business Invoice Tracker | 1–12 | Public-ready repository and final submission rehearsal | In progress: public repository and hosted CI are proven by V-1211/V-1212; final Phase 12 rehearsal remains |
+| REQ-001 | Public full-stack Business Invoice Tracker | 1–12 | Public-ready repository and final submission rehearsal | Proven by the prior phase gates plus Phase 12 V-1300 through V-1309/V-1399: the public repository, complete clean-copy rehearsal and GitHub-hosted delivery gate pass |
 | REQ-002 | Secure sign-in and sign-out | 2 | Auth, logout, CSRF, 401/403, and two-replica session tests | Proven for Phase 2 by V-0302, V-0303, V-0305, V-0306 |
 | REQ-003 | Tenant membership and Owner/Accountant/Viewer authorization | 2 | Complete endpoint authorization matrix including cross-tenant IDs | Proven for Phase 2 and repeated for customer endpoints by V-0602: Viewer reads, Owner/Accountant mutate, Viewer mutation is 403, and missing/cross-tenant ownership is 404 |
 | REQ-004 | Create, view, edit, search, and paginate customers | 5 | API, PostgreSQL, frontend, accessibility, and E2E tests | Proven by V-0601 through V-0605 and V-0608 |

@@ -70,7 +70,8 @@ The first Phase 12 clean-copy run reached Phase 7 after passing locked builds,
 tests and earlier gates, then failed because the script read `audit.action`
 instead of `audit.items.action`. The assertion now checks the generated bounded
 page while still requiring both issue and payment audit actions. The failed run
-is retained; only the untouched rerun may close the clean-copy gate.
+is retained. The untouched rerun from copied source and fresh volumes passed the
+complete Phase 2 and 4–11 suite as V-1306-R1.
 
 ## Residual limitations
 
@@ -79,4 +80,3 @@ configuration presented as active, secret, or untriaged critical/high package
 finding was found by the executed gates. The bounded non-claims and operational
 assumptions that remain are maintained in
 [`docs/submission/known-limitations.md`](../submission/known-limitations.md).
-

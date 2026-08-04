@@ -1,6 +1,6 @@
 # Phase 12 Working Plan
 
-Status: in progress on 2026-08-04. Phase 12 is the only active phase.
+Status: complete on 2026-08-04. No implementation phase remains active.
 
 ## Objective and scope
 
@@ -60,8 +60,34 @@ context, not proof that this repository passes.
 
 ## Exit conditions
 
-Every Phase 12 and constitution submission-gate row must pass at the same final
-commit, every README command must have a recorded successful rerun, all current
-documentation must agree with code, and no material concern may remain without
-an explicit bounded limitation. Phase 12 remains active until those conditions
-and the final hosted CI run pass.
+Every Phase 12 and constitution submission-gate row passes, every README command
+has a recorded successful rerun, current documentation agrees with code, and no
+material concern remains without an explicit bounded limitation. The published
+evidence commit is advanced only after its required GitHub-hosted check passes.
+
+## Completion report
+
+- Completed: hostile review and fixes; bounded contracts and UI behavior;
+  generated-client reconciliation; truthful operations inventory; deterministic
+  shutdown; final README, architecture/trade-offs, limitations, demo and 28-item
+  interview bank; exact default/optional/cleanup commands; complete fresh-copy
+  rehearsal; public hosted verification.
+- Constitution rules applied: evidence before claims; secure tenant boundaries;
+  atomic database ownership; bounded retries and queries; generated contracts;
+  warning/failure preservation; optional infrastructure outside the default
+  availability boundary; explicit non-claims for undemonstrated production work.
+- Evidence passed: V-1300 through V-1309 and the consolidated V-1399 gate,
+  including 21 .NET tests, 27 Vue tests with unchanged coverage floors, real
+  PostgreSQL/Dapr failure/concurrency/restart gates, image/secret scans, three
+  SPDX SBOMs, README rehearsal and GitHub-hosted run `30947437365`.
+- Decisions: existing ADR-001 through ADR-019 remain authoritative; Phase 12
+  introduced no appearance-driven platform. R-060 records the newly proven
+  app-before-sidecar shutdown constraint and fallback.
+- Remaining risks/doubts: only the bounded responsibilities in
+  `docs/submission/known-limitations.md`; no cloud/SLO, production backup policy,
+  zero-downtime migration, penetration-test or real-provider claim is made.
+- Gate: passed. Every requirements row is `Proven` and every failed Phase 12
+  attempt remains alongside its successful rerun.
+- Next: no Phase 13. Freeze the submission scope, use the demo script for the
+  assessment walkthrough, and use the interview bank to defend decisions and
+  limitations.
