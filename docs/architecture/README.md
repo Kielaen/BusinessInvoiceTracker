@@ -1,5 +1,11 @@
 # Architecture Evidence
 
+The current end-to-end architecture, correctness boundaries, retry ownership,
+deployment shape, alternatives and non-claims are in
+[`submission-architecture-and-tradeoffs.md`](submission-architecture-and-tradeoffs.md).
+The walking-skeleton topology below is retained as the Phase 1 evidence snapshot;
+it is not the complete submission architecture.
+
 ## Executable Phase 1 topology
 
 ```text

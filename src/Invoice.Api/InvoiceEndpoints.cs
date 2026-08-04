@@ -112,7 +112,8 @@ public static class InvoiceEndpoints
             .Produces<ProblemDetails>(404, "application/problem+json")
             .Produces<ProblemDetails>(409, "application/problem+json");
         group.MapGet("/{invoiceId:guid}/audit", AuditAsync).WithName("GetInvoiceAudit")
-            .Produces<IReadOnlyList<InvoiceAuditResponse>>()
+            .Produces<InvoiceAuditPageResponse>()
+            .ProducesValidationProblem()
             .Produces<ProblemDetails>(401, "application/problem+json")
             .Produces<ProblemDetails>(403, "application/problem+json")
             .Produces<ProblemDetails>(404, "application/problem+json");
@@ -667,10 +668,19 @@ public static class InvoiceEndpoints
     }
 
     private static async Task<IResult> AuditAsync(
-        Guid businessId, Guid invoiceId, ClaimsPrincipal principal,
+        Guid businessId, Guid invoiceId, int? page, int? pageSize,
+        ClaimsPrincipal principal,
         InvoiceDbContext database, IAuthorizationService authorization,
         CancellationToken cancellationToken)
     {
+        var currentPage = page ?? 1;
+        var currentPageSize = pageSize ?? 20;
+        var errors = new Dictionary<string, string[]>();
+        if (currentPage < 1) errors["page"] = ["Page must be at least 1."];
+        if (currentPageSize is < 1 or > 100)
+            errors["pageSize"] = ["Page size must be between 1 and 100."];
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
         var denied = await AuthorizeAsync(
             principal, businessId, BusinessRole.Viewer, database, authorization, cancellationToken);
         if (denied is not null) return denied;
@@ -678,15 +688,26 @@ public static class InvoiceEndpoints
                 invoice => invoice.BusinessId == businessId && invoice.Id == invoiceId,
                 cancellationToken))
             return ApiProblems.NotFound();
-        var records = await database.AuditEntries.AsNoTracking()
+        var query = database.AuditEntries.AsNoTracking()
             .Where(entry => entry.BusinessId == businessId &&
-                entry.AggregateId == invoiceId && entry.AggregateType == "Invoice")
+                entry.AggregateId == invoiceId && entry.AggregateType == "Invoice");
+        var totalCount = await query.CountAsync(cancellationToken);
+        var records = await query
             .OrderByDescending(entry => entry.OccurredAtUtc).ThenBy(entry => entry.Id)
+            .Skip((currentPage - 1) * currentPageSize)
+            .Take(currentPageSize)
             .ToListAsync(cancellationToken);
         var entries = records.Select(entry => new InvoiceAuditResponse(
             entry.Id, entry.Action, entry.ActorUserId,
             entry.OccurredAtUtc.UtcDateTime, entry.Details)).ToArray();
-        return TypedResults.Ok(entries);
+        return TypedResults.Ok(new InvoiceAuditPageResponse(
+            entries,
+            currentPage,
+            currentPageSize,
+            totalCount,
+            totalCount == 0
+                ? 0
+                : (int)Math.Ceiling(totalCount / (double)currentPageSize)));
     }
 
     private static async Task<CandidateResult> BuildCandidateAsync(
@@ -951,3 +972,7 @@ public sealed record InvoicePageResponse(
 public sealed record InvoiceAuditResponse(
     Guid Id, string Action, Guid? ActorUserId, DateTime OccurredAtUtc,
     string Details);
+
+public sealed record InvoiceAuditPageResponse(
+    IReadOnlyList<InvoiceAuditResponse> Items, int Page, int PageSize,
+    int TotalCount, int TotalPages);

@@ -32,6 +32,10 @@ Each ADR contains:
 | [ADR-009](009-invoice-lifecycle-and-edit-policy.md) | Invoice lifecycle and edit policy | Accepted |
 | [ADR-010](010-openapi-client-and-runtime-validation.md) | OpenAPI client and runtime validation generation | Accepted |
 | [ADR-012](012-observability-baseline-and-optional-viewer.md) | Observability backend and Compose profile | Accepted |
+| [ADR-013](013-draft-invoice-command-and-audit.md) | Draft invoice command, concurrency and audit | Accepted |
 | [ADR-014](014-time-zone-and-due-instant-semantics.md) | Time-zone and due-instant semantics | Accepted |
+| [ADR-015](015-issue-payment-void-command-semantics.md) | Issue, payment and void command semantics | Accepted |
+| [ADR-016](016-durable-overdue-workflow-and-notification-delivery.md) | Durable overdue workflow and notification delivery | Accepted |
+| [ADR-017](017-bounded-dashboard-and-invoice-discovery.md) | Bounded dashboard and invoice discovery | Accepted |
 | [ADR-018](018-resilience-health-and-operator-diagnostics.md) | Resilience, truthful health and operator diagnostics | Accepted |
 | [ADR-019](019-migration-deployment-and-supply-chain-gates.md) | Migration deployment and supply-chain gates | Accepted |

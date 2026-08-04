@@ -1,4 +1,4 @@
-# Phase 11 Threat Model
+# Submission Threat Model
 
 Status: active assessment model, reviewed 2026-08-04. This is a focused design
 and verification artifact, not a penetration-test or compliance report.
@@ -51,7 +51,7 @@ or rereads authority.
 | Duplicate/racing commands | Stable IDs/idempotency keys, unique constraints, optimistic concurrency, atomic transactions | V-0404/5, V-0702/5, V-0802, V-0905/7/10 | At-least-once transport remains intentional and observable |
 | Injection/search abuse | EF parameterization, explicit wildcard escaping, allow-listed sort/filter, bounded lengths/pages | V-0602/4 and V-1001 | This phase does not claim general-purpose DAST coverage |
 | Resource exhaustion | Page/line/query bounds, cancelled searches, login limiting, fixed dependency timeouts and bounded retries | V-0604, V-0701, V-1001, V-1102/3 and Phase 11 load profile | No production DDoS protection or SLO is claimed |
-| Secret exposure | No production fallback, ignored local environment/runtime state, clean-material Gitleaks scan, PII-safe telemetry | V-0306, Phase 10 instrumentation review, Phase 11 scan | Public Git history review remains Phase 12 because the repository has not yet been published |
+| Secret exposure | No production fallback, ignored local environment/runtime state, clean-material and committed-history Gitleaks scans, PII-safe telemetry | V-0306, Phase 10 instrumentation review, V-1206, V-1211/V-1212 | Scans are time-scoped; managed deployment secrets and key rotation remain environment responsibilities |
 | Vulnerable dependency/image | Exact locks/digests, NuGet/npm audits, distinct final-image CVE scans and SBOMs | Phase 11 supply-chain gate | Advisory data changes; a passing scan is time-scoped, not a future guarantee |
 | Unsafe schema deployment | One-shot migrator before apps, pending-model check, reviewed idempotent SQL and snapshot upgrades | ADR-019 and Phase 11 migration gate | Backup/restore and least-privilege identities depend on the real deployment environment |
 | Async work lost on shutdown | PostgreSQL/Dapr durable ownership, cancellation, stable attempts, restart reconciliation | Phase 8/10 plus Phase 11 stop/restart proof | Forced host/volume loss is outside graceful shutdown and needs infrastructure recovery |
@@ -76,4 +76,3 @@ an authenticated operator plane depend on a chosen hosting environment. They are
 not silently represented by local Compose. Production mode fails closed for
 missing demo configuration and enables HSTS/secure cookie behavior, but a real
 HTTPS deployment remains outside this assessment.
-

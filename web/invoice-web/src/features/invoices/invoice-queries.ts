@@ -6,7 +6,8 @@ export const invoiceKeys = {
   list: (businessId: string, options: InvoiceListOptions) =>
     ['invoices', businessId, 'list', options] as const,
   detail: (businessId: string, invoiceId: string) => ['invoices', businessId, 'detail', invoiceId] as const,
-  audit: (businessId: string, invoiceId: string) => ['invoices', businessId, 'audit', invoiceId] as const,
+  audit: (businessId: string, invoiceId: string, page?: number) =>
+    ['invoices', businessId, 'audit', invoiceId, page] as const,
 }
 
 export interface InvoiceListOptions {
@@ -30,7 +31,8 @@ export const invoiceDetailQuery = (businessId: string, invoiceId: string) => que
   queryFn: ({ signal }) => loadInvoice(businessId, invoiceId, signal),
 })
 
-export const invoiceAuditQuery = (businessId: string, invoiceId: string) => queryOptions({
-  queryKey: invoiceKeys.audit(businessId, invoiceId),
-  queryFn: ({ signal }) => loadInvoiceAudit(businessId, invoiceId, signal),
+export const invoiceAuditQuery = (businessId: string, invoiceId: string, page: number) => queryOptions({
+  queryKey: invoiceKeys.audit(businessId, invoiceId, page),
+  queryFn: ({ signal }) => loadInvoiceAudit(businessId, invoiceId, page, 20, signal),
+  placeholderData: (previous) => previous,
 })

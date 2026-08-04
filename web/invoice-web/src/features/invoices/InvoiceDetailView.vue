@@ -13,8 +13,14 @@ const route = useRoute()
 const workspace = useWorkspaceStore()
 const businessId = computed(() => workspace.selectedBusinessId ?? '')
 const invoiceId = computed(() => String(route.params.invoiceId ?? ''))
+const auditPage = ref(1)
 const query = useQuery(computed(() => invoiceDetailQuery(businessId.value, invoiceId.value)))
-const audit = useQuery(computed(() => invoiceAuditQuery(businessId.value, invoiceId.value)))
+const audit = useQuery(computed(() => invoiceAuditQuery(
+  businessId.value,
+  invoiceId.value,
+  auditPage.value,
+)))
+const auditTotalPages = computed(() => Number(audit.data.value?.totalPages ?? 0))
 const session = useQuery(sessionQueryOptions())
 const role = computed(() => session.data.value?.memberships.find(item => item.businessId === businessId.value)?.role)
 const canManage = computed(() => role.value === 'Owner' || role.value === 'Accountant')
@@ -99,6 +105,6 @@ const money = (value: number | string) => new Intl.NumberFormat('en-ZA', {
       <fieldset><legend>Record payment</legend><label for="payment-amount">Amount</label><input id="payment-amount" v-model="paymentAmount" inputmode="decimal" required><label for="payment-key">Idempotency key</label><input id="payment-key" v-model="paymentKey" maxlength="100" required><p class="field-hint">Keep the same key when retrying the same payment.</p></fieldset>
       <button type="submit" :disabled="paymentMutation.isPending.value || Number(paymentAmount) <= 0">{{ paymentMutation.isPending.value ? 'Recording…' : 'Record payment' }}</button>
     </form>
-    <section aria-labelledby="audit-title"><h2 id="audit-title">Audit history</h2><p v-if="audit.isPending.value" role="status">Loading audit history…</p><ProblemState v-else-if="audit.isError.value" compact :error="audit.error.value" @retry="audit.refetch()" /><ol v-else class="audit-list"><li v-for="entry in audit.data.value" :key="entry.id"><strong>{{ entry.action }}</strong> <time :datetime="entry.occurredAtUtc">{{ new Date(entry.occurredAtUtc).toLocaleString() }}</time></li></ol></section>
+    <section aria-labelledby="audit-title"><h2 id="audit-title">Audit history</h2><p v-if="audit.isPending.value" role="status">Loading audit history…</p><ProblemState v-else-if="audit.isError.value" compact :error="audit.error.value" @retry="audit.refetch()" /><template v-else-if="audit.data.value"><ol class="audit-list"><li v-for="entry in audit.data.value.items" :key="entry.id"><strong>{{ entry.action }}</strong> <time :datetime="entry.occurredAtUtc">{{ new Date(entry.occurredAtUtc).toLocaleString() }}</time></li></ol><nav v-if="auditTotalPages > 1" class="pagination" aria-label="Audit history pages"><button type="button" class="secondary" :disabled="auditPage <= 1 || audit.isFetching.value" @click="auditPage--">Previous</button><span>Page {{ audit.data.value.page }} of {{ auditTotalPages }}</span><button type="button" class="secondary" :disabled="auditPage >= auditTotalPages || audit.isFetching.value" @click="auditPage++">Next</button></nav></template></section>
   </article>
 </template>

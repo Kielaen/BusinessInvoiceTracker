@@ -239,9 +239,15 @@ export async function loadInvoice(
 export async function loadInvoiceAudit(
   businessId: string,
   invoiceId: string,
+  page: number,
+  pageSize: number,
   signal?: AbortSignal,
 ) {
-  const result = await getInvoiceAuditRequest({ path: { businessId, invoiceId }, signal })
+  const result = await getInvoiceAuditRequest({
+    path: { businessId, invoiceId },
+    query: { page, pageSize },
+    signal,
+  })
   if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError')
   if (result.error !== undefined) throw responseFailure(result.response?.status ?? 500, result.error)
   return parse(zGetInvoiceAuditResponse, result.data)

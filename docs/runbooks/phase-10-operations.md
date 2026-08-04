@@ -30,6 +30,7 @@ level objectives:
 | Signal | Investigate when | First evidence |
 |---|---:|---|
 | `invoice.outbox.pending` | nonzero and oldest age > 60s | API/Dapr/Redis health, then outbox error |
+| `invoice.domain.events.retained` | unexpected change in retained history | bounded type-level inventory and product event creation |
 | `invoice.workflow.commands.pending` | nonzero and age/retries keep increasing | automation Dapr, placement, scheduler |
 | `invoice.workflow.commands.failed` | > 0 | command kind, attempts, last error |
 | `invoice.automation.deadletters.unresolved` | > 0 | event type/message ID and subscriber logs |
@@ -38,10 +39,11 @@ level objectives:
 | `invoice.operations.snapshot.stale` | 1 | PostgreSQL connectivity and monitor Event 8301 |
 
 The current assessment topology intentionally has no external consumer for
-`InvoiceBecameOverdue`. Those durable rows can therefore contribute to the
-generic pending-outbox count. Always inspect the bounded type-level inventory
-before classifying a nonzero aggregate as a publish failure; R-053 tracks the
-remaining operational ambiguity.
+`InvoiceBecameOverdue`. Those durable records remain inspectable as domain-event
+history but are excluded from `invoice.outbox.pending` and its oldest-age gauge.
+They are reported separately by `invoice.domain.events.retained` and
+`retainedDomainEventCount`; an outbox backlog therefore means work expected to be
+published, while retained history never masquerades as a transport failure.
 
 Use these bounded SQL queries if the metrics viewer or loopback endpoint is not
 available:

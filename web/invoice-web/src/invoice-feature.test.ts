@@ -1,8 +1,10 @@
 import { createApp, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import axe from 'axe-core'
+import { loadInvoiceAudit } from './api/invoice-api'
 import InvoiceForm from './features/invoices/InvoiceForm.vue'
 import { emptyInvoiceForm, invoiceWriteBody, validateInvoice } from './features/invoices/invoice-form'
+import { client } from './generated/client.gen'
 import {
   zInvoiceCommandRequest,
   zInvoicePaymentRequest,
@@ -10,7 +12,11 @@ import {
 } from './generated/zod.gen'
 
 let host: HTMLElement | undefined
-afterEach(() => { host?.remove(); host = undefined })
+afterEach(() => {
+  host?.remove()
+  host = undefined
+  client.setConfig({ baseUrl: '', fetch: globalThis.fetch })
+})
 
 const customer = {
   id: '50000000-0000-4000-8000-000000000001',
@@ -56,6 +62,39 @@ describe('draft invoice feature', () => {
       receivedAtUtc: '2026-07-31T12:00:00Z',
     }).success).toBe(true)
     expect(zInvoicePaymentRequest.safeParse({ requestId, version, amount: 'bad' }).success).toBe(false)
+  })
+
+  it('loads and validates one bounded audit page', async () => {
+    const requested: string[] = []
+    const fetchStub = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input instanceof Request ? input.url : input.toString()
+      requested.push(url)
+      return new Response(JSON.stringify({
+        items: [{
+          id: '70000000-0000-4000-8000-000000000010',
+          action: 'InvoiceIssued',
+          actorUserId: '10000000-0000-4000-8000-000000000001',
+          occurredAtUtc: '2026-08-04T10:00:00Z',
+          details: '{}',
+        }],
+        page: 2,
+        pageSize: 20,
+        totalCount: 21,
+        totalPages: 2,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }) as typeof fetch
+    client.setConfig({ baseUrl: 'http://localhost', fetch: fetchStub })
+
+    const page = await loadInvoiceAudit(
+      '11111111-1111-4111-8111-111111111111',
+      '60000000-0000-4000-8000-000000000001',
+      2,
+      20,
+    )
+
+    expect(page.items[0]?.action).toBe('InvoiceIssued')
+    expect(requested[0]).toContain('page=2')
+    expect(requested[0]).toContain('pageSize=20')
   })
 
   it('focuses an accessible validation summary', async () => {

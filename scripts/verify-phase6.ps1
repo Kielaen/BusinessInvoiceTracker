@@ -112,8 +112,8 @@ if ([decimal]$updatedDraft.totalAmount -ne 345) { throw 'Updated server total is
 $stale = Invoke-AllowHttpError "$BaseUri/api/v1/businesses/$businessId/invoices/$invoiceId" $owner Put $headers $update
 Assert-Status $stale @(409) 'stale draft update'
 
-$audit = Invoke-RestMethod "$BaseUri/api/v1/businesses/$businessId/invoices/$invoiceId/audit" -WebSession $owner
-if ($audit.Count -lt 2 -or 'DraftCreated' -notin $audit.action -or 'DraftUpdated' -notin $audit.action) {
+$audit = Invoke-RestMethod "$BaseUri/api/v1/businesses/$businessId/invoices/$invoiceId/audit?page=1&pageSize=20" -WebSession $owner
+if ($audit.items.Count -lt 2 -or 'DraftCreated' -notin $audit.items.action -or 'DraftUpdated' -notin $audit.items.action) {
     throw 'Create/update audit history is incomplete.'
 }
 $list = Invoke-RestMethod "$BaseUri/api/v1/businesses/$businessId/invoices?page=1&pageSize=10" -WebSession $owner
@@ -125,6 +125,5 @@ if ($list.items.id -notcontains $invoiceId -or $list.pageSize -ne 10) {
     phase=6; gateChecks='totals-replay-authorization-concurrency-audit'
     total=$draft.totalAmount; updatedTotal=$updatedDraft.totalAmount
     crossTenantStatus=$crossTenant.StatusCode; staleStatus=$stale.StatusCode
-    auditEntries=$audit.Count
+    auditEntries=$audit.items.Count
 } | ConvertTo-Json
-

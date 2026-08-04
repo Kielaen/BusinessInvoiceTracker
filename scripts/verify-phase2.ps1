@@ -189,9 +189,26 @@ try {
 
     $owner = New-AuthenticatedSession 'owner@acme.test'
     $results.ownerMemberships = Get-HttpStatus `
-        "$baseUri/api/v1/businesses/$acmeBusinessId/memberships" `
+        "$baseUri/api/v1/businesses/$acmeBusinessId/memberships?page=1&pageSize=2" `
         $owner.Session
     Assert-Status 'owner membership list' $results.ownerMemberships 200
+    $membershipPage = Invoke-RestMethod `
+        "$baseUri/api/v1/businesses/$acmeBusinessId/memberships?page=1&pageSize=2" `
+        -WebSession $owner.Session
+    if ($membershipPage.page -ne 1 -or $membershipPage.pageSize -ne 2 -or
+        $membershipPage.items.Count -gt 2 -or $membershipPage.totalCount -lt 3) {
+        throw 'Owner membership collection did not return bounded pagination metadata.'
+    }
+    $businessPage = Invoke-RestMethod `
+        "$baseUri/api/v1/businesses?page=1&pageSize=1" `
+        -WebSession $owner.Session
+    if ($businessPage.page -ne 1 -or $businessPage.pageSize -ne 1 -or
+        $businessPage.items.Count -ne 1) {
+        throw 'Business collection did not return bounded pagination metadata.'
+    }
+    $results.invalidBusinessPage = Get-HttpStatus `
+        "$baseUri/api/v1/businesses?page=0&pageSize=101" $owner.Session
+    Assert-Status 'invalid business pagination' $results.invalidBusinessPage 400
     $results.missingCsrf = Get-HttpStatus `
         "$baseUri/api/v1/auth/logout" $owner.Session 'Post'
     Assert-Status 'missing antiforgery token' $results.missingCsrf 400

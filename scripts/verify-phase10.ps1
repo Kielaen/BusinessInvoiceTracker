@@ -90,10 +90,23 @@ try {
     $baselineSnapshot = Invoke-RestMethod `
         'http://127.0.0.1:5191/internal/operations/status'
     if ($baselineSnapshot.isStale) { throw 'Baseline operator snapshot is stale.' }
+    $retainedSql = @'
+SELECT count(*) FROM outbox_messages
+WHERE "PublishedAtUtc" IS NULL AND "Type" = 'InvoiceBecameOverdue';
+'@
+    $retainedOutput = $retainedSql | & docker exec -i `
+        $postgresContainer psql -U invoice -d invoice -tA
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Could not query retained domain-event evidence.'
+    }
+    if ($baselineSnapshot.retainedDomainEventCount -ne [int]$retainedOutput) {
+        throw 'Operator snapshot did not distinguish retained domain events from publishable outbox backlog.'
+    }
     $results.baseline = [ordered]@{
         apiReady = 200
         automationReady = 200
         snapshot = $baselineSnapshot
+        retainedDomainEventsMatchDatabase = $true
     }
 
     Invoke-Compose stop api-dapr

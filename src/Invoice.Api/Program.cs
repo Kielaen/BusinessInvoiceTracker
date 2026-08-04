@@ -375,28 +375,51 @@ app.MapGet("/api/v1/auth/me", async Task<IResult> (
     .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json");
 
 app.MapGet("/api/v1/businesses", async (
+    int? page,
+    int? pageSize,
     ClaimsPrincipal principal,
     InvoiceDbContext database,
     CancellationToken cancellationToken) =>
 {
+    var currentPage = page ?? 1;
+    var currentPageSize = pageSize ?? 20;
+    var paginationErrors = ValidatePagination(currentPage, currentPageSize);
+    if (paginationErrors.Count > 0)
+    {
+        return Results.ValidationProblem(paginationErrors);
+    }
+
     var userId = GetRequiredUserId(principal);
-    var businesses = await database.BusinessMemberships
+    var query = database.BusinessMemberships
         .AsNoTracking()
         .Where(membership =>
             membership.UserId == userId &&
-            membership.IsActive)
+            membership.IsActive);
+    var totalCount = await query.CountAsync(cancellationToken);
+    var businesses = await query
         .OrderBy(membership => membership.Business.Name)
+        .ThenBy(membership => membership.BusinessId)
+        .Skip((currentPage - 1) * currentPageSize)
+        .Take(currentPageSize)
         .Select(membership => new BusinessResponse(
             membership.BusinessId,
             membership.Business.Name,
             membership.Role.ToString()))
         .ToListAsync(cancellationToken);
-    return TypedResults.Ok(businesses);
+    return Results.Ok(new BusinessPageResponse(
+        businesses,
+        currentPage,
+        currentPageSize,
+        totalCount,
+        totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)currentPageSize)));
 })
     .RequireAuthorization()
     .WithName("ListBusinesses")
     .WithTags("Businesses")
-    .Produces<IReadOnlyList<BusinessResponse>>()
+    .Produces<BusinessPageResponse>()
+    .ProducesValidationProblem()
     .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json");
 
 app.MapGet("/api/v1/businesses/{businessId:guid}", async Task<IResult> (
@@ -439,11 +462,21 @@ app.MapGet(
     "/api/v1/businesses/{businessId:guid}/memberships",
     async Task<IResult> (
         Guid businessId,
+        int? page,
+        int? pageSize,
         ClaimsPrincipal principal,
         InvoiceDbContext database,
         IAuthorizationService authorization,
         CancellationToken cancellationToken) =>
 {
+    var currentPage = page ?? 1;
+    var currentPageSize = pageSize ?? 20;
+    var paginationErrors = ValidatePagination(currentPage, currentPageSize);
+    if (paginationErrors.Count > 0)
+    {
+        return Results.ValidationProblem(paginationErrors);
+    }
+
     var membership = await LoadMembershipAsync(
         principal,
         businessId,
@@ -463,27 +496,40 @@ app.MapGet(
         return ApiProblems.Forbidden();
     }
 
-    var members = await database.BusinessMemberships
+    var query = database.BusinessMemberships
         .AsNoTracking()
         .Where(candidate => candidate.BusinessId == businessId)
         .Join(
             database.Users,
             candidate => candidate.UserId,
             user => user.Id,
-            (membership, user) => new { membership, user })
+            (membership, user) => new { membership, user });
+    var totalCount = await query.CountAsync(cancellationToken);
+    var members = await query
         .OrderBy(candidate => candidate.user.Email)
+        .ThenBy(candidate => candidate.user.Id)
+        .Skip((currentPage - 1) * currentPageSize)
+        .Take(currentPageSize)
         .Select(candidate => new MembershipResponse(
             candidate.user.Id,
             candidate.user.Email!,
             candidate.membership.Role.ToString(),
             candidate.membership.IsActive))
         .ToListAsync(cancellationToken);
-    return TypedResults.Ok<IReadOnlyList<MembershipResponse>>(members);
+    return Results.Ok(new MembershipPageResponse(
+        members,
+        currentPage,
+        currentPageSize,
+        totalCount,
+        totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)currentPageSize)));
 })
     .RequireAuthorization()
     .WithName("ListMemberships")
     .WithTags("Memberships")
-    .Produces<IReadOnlyList<MembershipResponse>>()
+    .Produces<MembershipPageResponse>()
+    .ProducesValidationProblem()
     .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
     .Produces<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
     .Produces<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
@@ -577,6 +623,20 @@ static Guid GetRequiredUserId(ClaimsPrincipal principal)
     return userId;
 }
 
+static Dictionary<string, string[]> ValidatePagination(int page, int pageSize)
+{
+    var errors = new Dictionary<string, string[]>();
+    if (page < 1)
+    {
+        errors["page"] = ["Page must be at least 1."];
+    }
+    if (pageSize is < 1 or > 100)
+    {
+        errors["pageSize"] = ["Page size must be between 1 and 100."];
+    }
+    return errors;
+}
+
 static async Task<BusinessMembership?> LoadMembershipAsync(
     ClaimsPrincipal principal,
     Guid businessId,
@@ -605,6 +665,8 @@ static async Task<CurrentUserResponse> LoadCurrentUserAsync(
         .AsNoTracking()
         .Where(membership => membership.UserId == user.Id && membership.IsActive)
         .OrderBy(membership => membership.Business.Name)
+        .ThenBy(membership => membership.BusinessId)
+        .Take(100)
         .Select(membership => new MembershipSummary(
             membership.BusinessId,
             membership.Business.Name,

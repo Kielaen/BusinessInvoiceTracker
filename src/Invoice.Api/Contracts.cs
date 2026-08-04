@@ -11,11 +11,23 @@ public sealed record CurrentUserResponse(
     string Email,
     IReadOnlyList<MembershipSummary> Memberships);
 public sealed record BusinessResponse(Guid Id, string Name, string Role);
+public sealed record BusinessPageResponse(
+    IReadOnlyList<BusinessResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages);
 public sealed record MembershipResponse(
     Guid UserId,
     string Email,
     string Role,
     bool IsActive);
+public sealed record MembershipPageResponse(
+    IReadOnlyList<MembershipResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages);
 public sealed record WalkingSkeletonAccepted(
     Guid ProbeId,
     Guid MessageId,

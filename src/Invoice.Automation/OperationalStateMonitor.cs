@@ -26,6 +26,9 @@ public sealed partial class OperationalStateMonitor : BackgroundService
             () => Latest.OldestOutboxAgeSeconds,
             unit: "s");
         Meter.CreateObservableGauge(
+            "invoice.domain.events.retained",
+            () => Latest.RetainedDomainEventCount);
+        Meter.CreateObservableGauge(
             "invoice.workflow.commands.pending",
             () => Latest.PendingWorkflowCommandCount);
         Meter.CreateObservableGauge(
@@ -70,10 +73,19 @@ public sealed partial class OperationalStateMonitor : BackgroundService
             timeout.CancelAfter(TimeSpan.FromSeconds(5));
             var now = DateTimeOffset.UtcNow;
             var pendingOutbox = await database.OutboxMessages.AsNoTracking()
-                .CountAsync(item => item.PublishedAtUtc == null, timeout.Token);
+                .CountAsync(
+                    item => item.PublishedAtUtc == null &&
+                        item.Type != "InvoiceBecameOverdue",
+                    timeout.Token);
             var oldestOutbox = await database.OutboxMessages.AsNoTracking()
-                .Where(item => item.PublishedAtUtc == null)
+                .Where(item => item.PublishedAtUtc == null &&
+                    item.Type != "InvoiceBecameOverdue")
                 .MinAsync(item => (DateTimeOffset?)item.OccurredAtUtc, timeout.Token);
+            var retainedDomainEvents = await database.OutboxMessages.AsNoTracking()
+                .CountAsync(
+                    item => item.PublishedAtUtc == null &&
+                        item.Type == "InvoiceBecameOverdue",
+                    timeout.Token);
             var pendingCommands = await database.WorkflowCommands.AsNoTracking()
                 .CountAsync(
                     item => item.DispatchedAtUtc == null && item.FailedAtUtc == null,
@@ -102,6 +114,7 @@ public sealed partial class OperationalStateMonitor : BackgroundService
                 oldestOutbox is null
                     ? 0
                     : Math.Max(0, (long)(now - oldestOutbox.Value).TotalSeconds),
+                retainedDomainEvents,
                 pendingCommands,
                 failedCommands,
                 unresolvedDeadLetters,
@@ -147,6 +160,7 @@ public sealed record OperationalStateSnapshot(
     string? LastError,
     int PendingOutboxCount,
     long OldestOutboxAgeSeconds,
+    int RetainedDomainEventCount,
     int PendingWorkflowCommandCount,
     int FailedWorkflowCommandCount,
     int UnresolvedDeadLetterCount,
@@ -158,6 +172,7 @@ public sealed record OperationalStateSnapshot(
         null,
         true,
         "NotYetRefreshed",
+        0,
         0,
         0,
         0,

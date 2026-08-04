@@ -9,6 +9,14 @@ export type AntiforgeryResponse = {
     token: string;
 };
 
+export type BusinessPageResponse = {
+    items: Array<BusinessResponse>;
+    page: number | string;
+    pageSize: number | string;
+    totalCount: number | string;
+    totalPages: number | string;
+};
+
 export type BusinessResponse = {
     id: string;
     name: string;
@@ -112,6 +120,14 @@ export type HttpValidationProblemDetails = {
     errors?: {
         [key: string]: Array<string>;
     };
+};
+
+export type InvoiceAuditPageResponse = {
+    items: Array<InvoiceAuditResponse>;
+    page: number | string;
+    pageSize: number | string;
+    totalCount: number | string;
+    totalPages: number | string;
 };
 
 export type InvoiceAuditResponse = {
@@ -223,6 +239,14 @@ export type InvoiceUpdateRequest = {
 export type LoginRequest = {
     email: string;
     password: string;
+};
+
+export type MembershipPageResponse = {
+    items: Array<MembershipResponse>;
+    page: number | string;
+    pageSize: number | string;
+    totalCount: number | string;
+    totalPages: number | string;
 };
 
 export type MembershipResponse = {
@@ -399,11 +423,18 @@ export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUse
 export type ListBusinessesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        page?: number | string;
+        pageSize?: number | string;
+    };
     url: '/api/v1/businesses';
 };
 
 export type ListBusinessesErrors = {
+    /**
+     * Bad Request
+     */
+    400: HttpValidationProblemDetails;
     /**
      * Unauthorized
      */
@@ -416,7 +447,7 @@ export type ListBusinessesResponses = {
     /**
      * OK
      */
-    200: Array<BusinessResponse>;
+    200: BusinessPageResponse;
 };
 
 export type ListBusinessesResponse = ListBusinessesResponses[keyof ListBusinessesResponses];
@@ -461,11 +492,18 @@ export type ListMembershipsData = {
     path: {
         businessId: string;
     };
-    query?: never;
+    query?: {
+        page?: number | string;
+        pageSize?: number | string;
+    };
     url: '/api/v1/businesses/{businessId}/memberships';
 };
 
 export type ListMembershipsErrors = {
+    /**
+     * Bad Request
+     */
+    400: HttpValidationProblemDetails;
     /**
      * Unauthorized
      */
@@ -486,7 +524,7 @@ export type ListMembershipsResponses = {
     /**
      * OK
      */
-    200: Array<MembershipResponse>;
+    200: MembershipPageResponse;
 };
 
 export type ListMembershipsResponse = ListMembershipsResponses[keyof ListMembershipsResponses];
@@ -1076,11 +1114,18 @@ export type GetInvoiceAuditData = {
         businessId: string;
         invoiceId: string;
     };
-    query?: never;
+    query?: {
+        page?: number | string;
+        pageSize?: number | string;
+    };
     url: '/api/v1/businesses/{businessId}/invoices/{invoiceId}/audit';
 };
 
 export type GetInvoiceAuditErrors = {
+    /**
+     * Bad Request
+     */
+    400: HttpValidationProblemDetails;
     /**
      * Unauthorized
      */
@@ -1101,7 +1146,7 @@ export type GetInvoiceAuditResponses = {
     /**
      * OK
      */
-    200: Array<InvoiceAuditResponse>;
+    200: InvoiceAuditPageResponse;
 };
 
 export type GetInvoiceAuditResponse = GetInvoiceAuditResponses[keyof GetInvoiceAuditResponses];

@@ -85,7 +85,11 @@ FROM batch;
     }
 
     $stopStarted = Get-Date
-    Invoke-Compose stop --timeout 15 api-dapr api
+    # Stop the publisher before its shared-network sidecar. A concurrent Compose
+    # stop may remove the sidecar first while leaving the API alive long enough
+    # to add environment-dependent attempts to the deliberately failed backlog.
+    Invoke-Compose stop --timeout 15 api
+    Invoke-Compose stop --timeout 15 api-dapr
     $stopSeconds = ((Get-Date) - $stopStarted).TotalSeconds
     $exitCode = docker inspect --format '{{.State.ExitCode}}' $apiContainer
     if ($LASTEXITCODE -ne 0) { throw 'Could not inspect stopped API.' }

@@ -272,8 +272,8 @@ Assert-Status $crossTenant @(404) 'cross-tenant lifecycle read'
 $auditA = Invoke-RestMethod `
     "$BaseUri/api/v1/businesses/$businessId/invoices/$invoiceAId/audit" `
     -WebSession $owner
-if ('InvoiceIssued' -notin $auditA.action -or
-    'InvoicePaymentRecorded' -notin $auditA.action) {
+if ('InvoiceIssued' -notin $auditA.items.action -or
+    'InvoicePaymentRecorded' -notin $auditA.items.action) {
     throw 'Issue/payment audit history is incomplete.'
 }
 $commandIds = @(

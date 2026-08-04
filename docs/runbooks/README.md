@@ -1,7 +1,10 @@
-# Phase 1 Local Runbook
+# Local Reviewer Runbook
 
 Phase 10 dependency failure, backlog, notification correlation and optional
 telemetry procedures are in `phase-10-operations.md`.
+Phase 11 migration, database-operation, scan and CI procedures are in
+`phase-11-delivery.md`. Submission boundaries and the exact demonstration path
+are in `../submission/known-limitations.md` and `../submission/demo-script.md`.
 
 ## Start and verify
 
