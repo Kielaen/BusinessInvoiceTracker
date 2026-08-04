@@ -120,35 +120,27 @@ jobs:
           load: true
           push: false
 
-      - name: Scan API image and generate SBOM
-        uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
-        with:
-          command: cves,sbom
-          image: local://business-invoice-ci-api:${{ github.sha }}
-          only-severities: critical,high
-          exit-code: true
-          format: spdx
-          output: artifacts/api.spdx.json
-
-      - name: Scan automation image and generate SBOM
-        uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
-        with:
-          command: cves,sbom
-          image: local://business-invoice-ci-automation:${{ github.sha }}
-          only-severities: critical,high
-          exit-code: true
-          format: spdx
-          output: artifacts/automation.spdx.json
-
-      - name: Scan web image and generate SBOM
-        uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
-        with:
-          command: cves,sbom
-          image: local://business-invoice-ci-web:${{ github.sha }}
-          only-severities: critical,high
-          exit-code: true
-          format: spdx
-          output: artifacts/web.spdx.json
+      - name: Scan final images and generate SBOMs
+        env:
+          TRIVY_IMAGE: >-
+            aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+        run: |
+          mkdir -p artifacts "$RUNNER_TEMP/trivy-cache"
+          for target in api automation web; do
+            image="business-invoice-ci-${target}:${{ github.sha }}"
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+              "$TRIVY_IMAGE" image --scanners vuln --severity CRITICAL,HIGH \
+              --exit-code 1 --no-progress "$image"
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+              -v "$PWD/artifacts:/artifacts" \
+              "$TRIVY_IMAGE" image --format spdx-json --no-progress \
+              --output "/artifacts/${target}.spdx.json" "$image"
+            test -s "artifacts/${target}.spdx.json"
+          done
 
       - name: Preserve final-image SBOMs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

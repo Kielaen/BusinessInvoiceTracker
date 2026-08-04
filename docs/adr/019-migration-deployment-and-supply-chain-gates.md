@@ -86,6 +86,15 @@ Run supply-chain tools in an isolated pinned container if a hosted action is
 unavailable. No fallback may reintroduce replica-owned migrations, suppress a
 finding, or claim that an incomplete scan passed.
 
+The first GitHub-hosted run proved that the pinned Docker Scout action requires
+a Docker account entitled to Scout on the runner. Supplying a personal Docker
+credential would add an unrelated secret and external account dependency, so
+the hosted fallback is the official Trivy 0.73.0 container pinned by digest.
+It scans every locally built final image for critical/high vulnerabilities with
+a nonzero finding exit, then emits a non-empty SPDX JSON SBOM per image. Local
+delivery evidence continues to use pinned Docker Scout, giving independent
+scanner snapshots without weakening either gate.
+
 ## Verification
 
 Accepted by V-1200 through V-1208 and the exact clean-copy gate V-1299. The

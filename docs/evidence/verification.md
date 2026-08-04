@@ -518,6 +518,13 @@ PASS database-level cross-tenant customer rejection
     `35D7FE...50CEC`. A first portable move assumed the wrong archive directory and
     installed nothing; the exact invalid PATH entry was corrected, the archive
     layout inspected, and the checksum-verified binary now reports 2.97.0.
+97. GitHub-hosted run `30917243950` passed secret scanning, backend and frontend
+    gates, coverage artifacts, and all three image builds, then Docker Scout
+    rejected the runner account as not entitled. ADR-019's pinned-container
+    fallback now uses the immutable, non-prerelease Trivy 0.73.0 release at
+    verified digest `sha256:7cced7...091045c`; critical/high findings still fail, and a non-empty
+    SPDX JSON SBOM remains required for each final image. The failed run is
+    retained and no hosted pass is claimed until the replacement rerun succeeds.
 
 The earlier Docker-blocked rows are retained as historical results. Their `-R1`
 reruns above are the current evidence.
