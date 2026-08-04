@@ -22,7 +22,7 @@ USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Invoice.Automation.dll"]
 
-FROM node:24.14.1-alpine3.22@sha256:4f33c7804fa7775b87875f512e25e515692210bfdeafd715eb8bc441c364e2f6 AS web-build
+FROM node:26.3.0-alpine3.22@sha256:c7932b9e5e337b0e733d6e16abc1b0e104759e8b05e59ed56586cce967d26dfe AS web-build
 WORKDIR /web
 COPY web/invoice-web/package.json web/invoice-web/package-lock.json ./
 RUN npm ci
