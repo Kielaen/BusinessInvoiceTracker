@@ -75,10 +75,15 @@ have repository evidence. The old nginx base was replaced after its scan found
 critical/high packages; the replacement final image had no critical/high finding
 in the scanner snapshot.
 
-Remote GitHub-hosted execution remains unobserved as R-020. Production backup
-execution, separate migration credentials, capacity/SLO validation and
+GitHub-hosted run `30941001930` passed the complete workflow on the published
+`main` commit `7a82726`, including committed-history secret scanning, locked
+backend/frontend gates and coverage artifacts, three image builds, critical/high
+Trivy scans, SPDX SBOM artifacts and the clean Compose reviewer path. The current
+full-SHA actions use Node 24 and the run completed without annotations. R-020 and
+the remote portion of R-059 are closed as V-1211/V-1212. Production backup
+execution, production secret provisioning, capacity/SLO validation and universal
 zero-downtime schema evolution remain deployment responsibilities, not claims of
-this local gate. Phase 12 is the exact next phase.
+this assessment gate. Phase 12 is the exact next phase.
 
 Pre-Phase-12 extension V-1209 subsequently executed the locally provable parts:
 a backup was restored into an isolated database with equal stable inventory, and
@@ -92,3 +97,7 @@ The expanded suite then passed from untouched copy
 `business-invoice-phase2-clean-827baaad38734482b156dd08cf5db249` as V-1210 and
 V-1299-R1. Its isolated containers, volumes, temporary databases/roles and copied
 source were removed, and the retained main stack was restored.
+
+The public-repository and hosted-runner extension then passed as V-1211, V-1212
+and V-1299-R2. The failed entitlement run and the successful fallback/remediation
+runs remain visible; no failed evidence was erased or relabelled.

@@ -100,8 +100,12 @@ scanner snapshots without weakening either gate.
 Accepted by V-1200 through V-1208 and the exact clean-copy gate V-1299. The
 one-shot migrator applied the reviewed schema twice, an earlier supported
 snapshot upgraded, model drift was zero, final images ran as users 1654/1654/101,
-and repository/image/SBOM gates passed. Remote GitHub-hosted execution remains
-unobserved under R-020 and is not inferred from the local CI mirror.
+and repository/image/SBOM gates passed. V-1211/V-1212 then published the exact
+repository and observed the full workflow on GitHub's `ubuntu-24.04` runner.
+The first hosted run truthfully failed on Docker Scout entitlement; the pinned
+Trivy fallback passed locally and remotely. A subsequent full-SHA repin removed
+the runner's Node 20 deprecation annotation, and run `30941001930` passed every
+step without annotations. R-020 and the remote portion of R-059 are closed.
 
 V-1209 additionally verifies a custom-format backup/restore with equal stable
 inventory, application DML before and after the index-only latest migration, and

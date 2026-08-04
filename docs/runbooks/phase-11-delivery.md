@@ -121,12 +121,15 @@ volumes; infrastructure backup and recovery own that boundary.
 
 ## CI and scanner availability
 
-The workflow uses read-only permissions and full-SHA action pins. Docker Scout
-and Gitleaks are independent gates, while NuGet/npm audits cover application
-dependency graphs. If advisory or registry access is unavailable, the result is
-inconclusive—not clean. Retry the same pinned command and retain the outage; do
-not bypass it for release. R-020 remains open until the workflow runs on a real
-GitHub-hosted runner.
+The workflow uses read-only permissions and full-SHA Node 24 action pins. Local
+delivery uses pinned Docker Scout; GitHub-hosted delivery uses the official Trivy
+container at an immutable digest because Scout requires a separately entitled
+Docker account. Both fail on critical/high findings and generate SPDX SBOMs;
+Gitleaks independently scans committed history, while NuGet/npm audits cover
+application dependency graphs. If advisory or registry access is unavailable,
+the result is inconclusive—not clean. Retry the same pinned command and retain
+the outage; do not bypass it for release. R-020 closed when the complete workflow
+passed on GitHub's `ubuntu-24.04` runner as V-1212.
 
 CI preserves backend and frontend coverage artifacts. Vue enforces the current
 non-regression floors (35% statements, 30% branches, 25% functions, 38% lines)
