@@ -525,6 +525,18 @@ PASS database-level cross-tenant customer rejection
     verified digest `sha256:7cced7...091045c`; critical/high findings still fail, and a non-empty
     SPDX JSON SBOM remains required for each final image. The failed run is
     retained and no hosted pass is claimed until the replacement rerun succeeds.
+98. Replacement run `30920502822` passed every gate but GitHub annotated four
+    action families for deprecated Node 20 runtimes that the hosted runner had
+    forcibly redirected to Node 24. Current official releases and their checked-in
+    `action.yml` metadata were inspected, then checkout, setup-node,
+    upload-artifact, setup-buildx and build-push were repinned to full commit SHAs
+    for their current Node 24 releases. The warning was not suppressed; a final
+    hosted rerun remains required before R-020 closes.
+99. A pre-push YAML parse command found neither ambient Python nor PyYAML in the
+    bundled Python runtime, so it produced no parse evidence. The independent
+    full-SHA/whitespace checks passed; the change modifies only action-reference
+    scalars, and GitHub's own workflow parser plus execution remains the required
+    validation. No parser success was inferred from either failed command.
 
 The earlier Docker-blocked rows are retained as historical results. Their `-R1`
 reruns above are the current evidence.
