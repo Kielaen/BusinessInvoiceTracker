@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
-    "@types/node": "26.1.2",
+    "@types/node": "26.2.0",
     "@vitejs/plugin-vue": "6.0.8",
     "@vitest/coverage-v8": "4.1.10",
     "axe-core": "4.12.1",
