@@ -7,7 +7,7 @@ RUN dotnet restore BusinessInvoiceTracker.slnx --locked-mode
 RUN dotnet publish src/Invoice.Api/Invoice.Api.csproj --no-restore -c Release -o /out/api /p:UseAppHost=false
 RUN dotnet publish src/Invoice.Automation/Invoice.Automation.csproj --no-restore -c Release -o /out/automation /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.10-noble@sha256:1fa23fc4872d95fd71c2833ebe65d7e84a43b2d51a31d119516852f13d9505a7 AS api
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-noble@sha256:6a94333d37514e385650a3c81a55e5350b67253dbe136e9cf17e499c35606a8c AS api
 WORKDIR /app
 COPY --from=dotnet-build /out/api .
 RUN mkdir -p /keys && chown "$APP_UID:$APP_UID" /keys
@@ -15,7 +15,7 @@ USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Invoice.Api.dll"]
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.10-noble@sha256:1fa23fc4872d95fd71c2833ebe65d7e84a43b2d51a31d119516852f13d9505a7 AS automation
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-noble@sha256:6a94333d37514e385650a3c81a55e5350b67253dbe136e9cf17e499c35606a8c AS automation
 WORKDIR /app
 COPY --from=dotnet-build /out/automation .
 USER $APP_UID
