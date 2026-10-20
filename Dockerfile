@@ -29,7 +29,7 @@ RUN npm ci
 COPY web/invoice-web/ .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.31.3-alpine3.24@sha256:a6c3ec0c0d249d68b0682df854d4a9e222b90fb607dc3fcf2f1d2fcbc85d347e AS web
+FROM nginxinc/nginx-unprivileged:1.31.6-alpine3.24@sha256:884e0b7f42f303641b0f4e78755aea647521dca0b89ca3be7992ad78b5c07434 AS web
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=web-build /web/dist /usr/share/nginx/html
 EXPOSE 8080
